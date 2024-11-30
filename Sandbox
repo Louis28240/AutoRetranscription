@@ -10,11 +10,14 @@ from google.colab import files
 import torchaudio
 import torch
 
+
 uploaded = files.upload()
 filename = list(uploaded.keys())[0]
 
-pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization",
-                                    use_auth_token="hf_your_new_token_here")
+
+pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization", 
+                                    use_auth_token="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") 
+
 
 def split_audio(filename, segment_duration=10):
     waveform, sample_rate = torchaudio.load(filename)
@@ -24,6 +27,7 @@ def split_audio(filename, segment_duration=10):
     return segments, sample_rate
 
 segments, sample_rate = split_audio(filename)
+
 
 diarization_results = []
 for segment in segments:
@@ -39,6 +43,7 @@ for result in diarization_results:
     else:
         combined_diarization = combined_diarization.update(result)
 
+
 !pip install git+https://github.com/openai/whisper.git
 !sudo apt update && sudo apt install ffmpeg
 
@@ -48,35 +53,16 @@ puissance = "turbo"  # @param ["base", "medium", "turbo", "large-v3"]
 model = whisper.load_model(puissance)
 result = model.transcribe(filename)
 
+
 transcription = ""
 for turn, _, speaker in combined_diarization.itertracks(yield_label=True):
     segment = result["segments"][int(turn.start * 1000):int(turn.end * 1000)]
-    speaker_name = f"Speaker {int(speaker) + 1}"  
+    speaker_name = speaker  # Utiliser directement le nom du locuteur
     transcription += f"\n{speaker_name}:\n"
     transcription += " ".join([word["text"] for word in segment if word["text"]])
 
 
 print(transcription)
-
 =======================================================================================
 
-Bug à partir du dernier module ==> 
-
-transcription = ""
-for turn, _, speaker in combined_diarization.itertracks(yield_label=True):
-    segment = result["segments"][int(turn.start * 1000):int(turn.end * 1000)]
-    speaker_name = f"Speaker {int(speaker) + 1}"  
-    transcription += f"\n{speaker_name}:\n"
-    transcription += " ".join([word["text"] for word in segment if word["text"]])
-
-
-
-erreur : ValueError                                Traceback (most recent call last)
-<ipython-input-8-ceff5b7102fe> in <cell line: 55>()
-     55 for turn, _, speaker in combined_diarization.itertracks(yield_label=True):
-     56     segment = result["segments"][int(turn.start * 1000):int(turn.end * 1000)]
----> 57     speaker_name = f"Speaker {int(speaker) + 1}"  # Convertir en chaîne de caractères
-     58     transcription += f"\n{speaker_name}:\n"
-     59     transcription += " ".join([word["text"] for word in segment if word["text"]])
-
-ValueError: invalid literal for int() with base 10: 'SPEAKER_01'
+le code passe bien mais le résultat est pas dingue (très nul même).
