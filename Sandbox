@@ -2,21 +2,22 @@ Avec pipeline pour séparer par locuteur :
 
 **code** 
 =======================================================================================
-# Installer pyannote.audio
-!pip install pyannote.audio
+
+!pip install pyannote.audio python-docx
 
 from pyannote.audio import Pipeline
 from google.colab import files
 import torchaudio
 import torch
+import docx
 
 
 uploaded = files.upload()
 filename = list(uploaded.keys())[0]
 
 
-pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization", 
-                                    use_auth_token="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") 
+pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization",
+                                    use_auth_token="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")
 
 
 def split_audio(filename, segment_duration=10):
@@ -35,6 +36,7 @@ for segment in segments:
     torchaudio.save(segment_filename, segment, sample_rate)
     diarization_segment = pipeline(segment_filename)
     diarization_results.append(diarization_segment)
+
 
 combined_diarization = None
 for result in diarization_results:
@@ -56,13 +58,33 @@ result = model.transcribe(filename)
 
 transcription = ""
 for turn, _, speaker in combined_diarization.itertracks(yield_label=True):
-    segment = result["segments"][int(turn.start * 1000):int(turn.end * 1000)]
-    speaker_name = speaker  # Utiliser directement le nom du locuteur
+    segment_start = turn.start
+    segment_end = turn.end
+    segment_text = [s["text"] for s in result["segments"] if segment_start <= s["start"] <= segment_end]
+
+    # Remplacer les noms des locuteurs spécifiques par vos noms
+    if speaker == "SPEAKER_01":
+        speaker_name = "Votre Nom"
+    elif speaker == "SPEAKER_02":
+        speaker_name = "Nom Deuxième Locuteur"
+    else:
+        speaker_name = speaker
+
     transcription += f"\n{speaker_name}:\n"
-    transcription += " ".join([word["text"] for word in segment if word["text"]])
+    transcription += " ".join(segment_text) + "\n"
 
 
-print(transcription)
+with open("transcription.txt", "w") as txt_file:
+    txt_file.write(transcription)
+
+
+doc = docx.Document()
+doc.add_paragraph(transcription)
+doc.save("transcription.docx")
+
+
+files.download("transcription.txt")
+
 =======================================================================================
 
 le code passe bien mais le résultat est pas dingue (très nul même).
