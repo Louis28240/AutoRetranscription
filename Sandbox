@@ -2,30 +2,42 @@ Avec pipeline pour séparer par locuteur :
 
 **code** 
 =======================================================================================
-
+# Installer pyannote.audio
 !pip install pyannote.audio
 
 from pyannote.audio import Pipeline
 from google.colab import files
+import torchaudio
 import torch
 
 uploaded = files.upload()
 filename = list(uploaded.keys())[0]
 
-try:
-    pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization",
-                                        use_auth_token="hf_your_new_token_here")
-    print("Modèle chargé avec succès.")
-except Exception as e:
-    print(f"Erreur lors du chargement du modèle: {e}")
-    raise
+pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization",
+                                    use_auth_token="hf_your_new_token_here")
 
-try:
-    diarization = pipeline(filename)
-    print("Diarization effectuée avec succès.")
-except Exception as e:
-    print(f"Erreur lors de l'application du pipeline: {e}")
-    raise
+def split_audio(filename, segment_duration=10):
+    waveform, sample_rate = torchaudio.load(filename)
+    total_samples = waveform.shape[1]
+    segment_samples = segment_duration * sample_rate
+    segments = [waveform[:, i:i + segment_samples] for i in range(0, total_samples, segment_samples)]
+    return segments, sample_rate
+
+segments, sample_rate = split_audio(filename)
+
+diarization_results = []
+for segment in segments:
+    segment_filename = "temp_segment.wav"
+    torchaudio.save(segment_filename, segment, sample_rate)
+    diarization_segment = pipeline(segment_filename)
+    diarization_results.append(diarization_segment)
+
+combined_diarization = None
+for result in diarization_results:
+    if combined_diarization is None:
+        combined_diarization = result
+    else:
+        combined_diarization = combined_diarization.update(result)
 
 !pip install git+https://github.com/openai/whisper.git
 !sudo apt update && sudo apt install ffmpeg
@@ -37,11 +49,34 @@ model = whisper.load_model(puissance)
 result = model.transcribe(filename)
 
 transcription = ""
-for turn, _, speaker in diarization.itertracks(yield_label=True):
+for turn, _, speaker in combined_diarization.itertracks(yield_label=True):
     segment = result["segments"][int(turn.start * 1000):int(turn.end * 1000)]
-    speaker_name = f"Speaker {speaker + 1}"
+    speaker_name = f"Speaker {int(speaker) + 1}"  
     transcription += f"\n{speaker_name}:\n"
     transcription += " ".join([word["text"] for word in segment if word["text"]])
 
+
 print(transcription)
+
 =======================================================================================
+
+Bug à partir du dernier module ==> 
+
+transcription = ""
+for turn, _, speaker in combined_diarization.itertracks(yield_label=True):
+    segment = result["segments"][int(turn.start * 1000):int(turn.end * 1000)]
+    speaker_name = f"Speaker {int(speaker) + 1}"  
+    transcription += f"\n{speaker_name}:\n"
+    transcription += " ".join([word["text"] for word in segment if word["text"]])
+
+
+
+erreur : ValueError                                Traceback (most recent call last)
+<ipython-input-8-ceff5b7102fe> in <cell line: 55>()
+     55 for turn, _, speaker in combined_diarization.itertracks(yield_label=True):
+     56     segment = result["segments"][int(turn.start * 1000):int(turn.end * 1000)]
+---> 57     speaker_name = f"Speaker {int(speaker) + 1}"  # Convertir en chaîne de caractères
+     58     transcription += f"\n{speaker_name}:\n"
+     59     transcription += " ".join([word["text"] for word in segment if word["text"]])
+
+ValueError: invalid literal for int() with base 10: 'SPEAKER_01'
