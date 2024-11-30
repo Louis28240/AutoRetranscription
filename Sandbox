@@ -1,0 +1,47 @@
+Avec pipeline pour séparer par locuteur : 
+
+**code** 
+=======================================================================================
+
+!pip install pyannote.audio
+
+from pyannote.audio import Pipeline
+from google.colab import files
+import torch
+
+uploaded = files.upload()
+filename = list(uploaded.keys())[0]
+
+try:
+    pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization",
+                                        use_auth_token="hf_your_new_token_here")
+    print("Modèle chargé avec succès.")
+except Exception as e:
+    print(f"Erreur lors du chargement du modèle: {e}")
+    raise
+
+try:
+    diarization = pipeline(filename)
+    print("Diarization effectuée avec succès.")
+except Exception as e:
+    print(f"Erreur lors de l'application du pipeline: {e}")
+    raise
+
+!pip install git+https://github.com/openai/whisper.git
+!sudo apt update && sudo apt install ffmpeg
+
+import whisper
+
+puissance = "turbo"  # @param ["base", "medium", "turbo", "large-v3"]
+model = whisper.load_model(puissance)
+result = model.transcribe(filename)
+
+transcription = ""
+for turn, _, speaker in diarization.itertracks(yield_label=True):
+    segment = result["segments"][int(turn.start * 1000):int(turn.end * 1000)]
+    speaker_name = f"Speaker {speaker + 1}"
+    transcription += f"\n{speaker_name}:\n"
+    transcription += " ".join([word["text"] for word in segment if word["text"]])
+
+print(transcription)
+=======================================================================================
