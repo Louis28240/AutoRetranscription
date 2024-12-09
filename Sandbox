@@ -2,89 +2,55 @@ Avec pipeline pour séparer par locuteur :
 
 **code** 
 =======================================================================================
-
-!pip install pyannote.audio python-docx
-
-from pyannote.audio import Pipeline
-from google.colab import files
-import torchaudio
-import torch
-import docx
-
-
-uploaded = files.upload()
-filename = list(uploaded.keys())[0]
-
-
-pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization",
-                                    use_auth_token="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")
-
-
-def split_audio(filename, segment_duration=10):
-    waveform, sample_rate = torchaudio.load(filename)
-    total_samples = waveform.shape[1]
-    segment_samples = segment_duration * sample_rate
-    segments = [waveform[:, i:i + segment_samples] for i in range(0, total_samples, segment_samples)]
-    return segments, sample_rate
-
-segments, sample_rate = split_audio(filename)
-
-
-diarization_results = []
-for segment in segments:
-    segment_filename = "temp_segment.wav"
-    torchaudio.save(segment_filename, segment, sample_rate)
-    diarization_segment = pipeline(segment_filename)
-    diarization_results.append(diarization_segment)
-
-
-combined_diarization = None
-for result in diarization_results:
-    if combined_diarization is None:
-        combined_diarization = result
-    else:
-        combined_diarization = combined_diarization.update(result)
-
+from torch import cuda
+cuda.get_device_name(0)
 
 !pip install git+https://github.com/openai/whisper.git
-!sudo apt update && sudo apt install ffmpeg
+from torch import cuda
+cuda.get_device_name(0)
+print("Veuillez déposer votre fichier audio :")
+
+from google.colab import files 
+uploaded = files.upload()
+audio_path = list(uploaded.keys())[0]
+print(f"Fichier reçu : {audio_path}")
 
 import whisper
 
-puissance = "turbo"  # @param ["base", "medium", "turbo", "large-v3"]
-model = whisper.load_model(puissance)
-result = model.transcribe(filename)
+puissance = "medium"  # @param ["base", "medium", "turbo", "large-v3"]
+def transcribe_with_speaker_changes(video_path, model_size=(puissance)):
+   
+    model = whisper.load_model(model_size)
 
+    result = model.transcribe(video_path, fp16=False)
 
-transcription = ""
-for turn, _, speaker in combined_diarization.itertracks(yield_label=True):
-    segment_start = turn.start
-    segment_end = turn.end
-    segment_text = [s["text"] for s in result["segments"] if segment_start <= s["start"] <= segment_end]
+ 
+    transcription = ""
+    last_speaker = None
 
-    # Remplacer les noms des locuteurs spécifiques par vos noms
-    if speaker == "SPEAKER_01":
-        speaker_name = "Votre Nom"
-    elif speaker == "SPEAKER_02":
-        speaker_name = "Nom Deuxième Locuteur"
-    else:
-        speaker_name = speaker
+    for segment in result['segments']:
+        start_time = segment['start']
+        end_time = segment['end']
+        text = segment['text']
 
-    transcription += f"\n{speaker_name}:\n"
-    transcription += " ".join(segment_text) + "\n"
+      
+        if last_speaker is None or start_time - last_speaker > 2:  # Ajuster si besoin
+            transcription += "\n"  
 
+        transcription += text.strip() + " "
+        last_speaker = end_time
 
-with open("transcription.txt", "w") as txt_file:
-    txt_file.write(transcription)
+    return transcription.strip()
 
+if __name__ == "__main__":
+    video_path = (audio_path)  
+    output = transcribe_with_speaker_changes(video_path)
 
-doc = docx.Document()
-doc.add_paragraph(transcription)
-doc.save("transcription.docx")
+    with open("transcription.txt", "w", encoding="utf-8") as file:
+        file.write(output)
 
-
-files.download("transcription.txt")
+    print("Transcription completed and saved to 'transcription.txt'.")
 
 =======================================================================================
 
-le code passe bien mais le résultat est pas dingue (très nul même).
+Ce code fonctionne (enfin!!!). Voir si beaucoup d'erreurs dans le saut de ligne. 
