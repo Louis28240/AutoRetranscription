@@ -2,54 +2,68 @@ Avec pipeline pour séparer par locuteur :
 
 **code** 
 =======================================================================================
-from torch import cuda
-cuda.get_device_name(0)
-
 !pip install git+https://github.com/openai/whisper.git
 from torch import cuda
-cuda.get_device_name(0)
-print("Veuillez déposer votre fichier audio :")
-
-from google.colab import files 
-uploaded = files.upload()
-audio_path = list(uploaded.keys())[0]
-print(f"Fichier reçu : {audio_path}")
-
 import whisper
+from google.colab import files
 
-puissance = "medium"  # @param ["base", "medium", "turbo", "large-v3"]
-def transcribe_with_speaker_changes(video_path, model_size=(puissance)):
-   
-    model = whisper.load_model(model_size)
+if cuda.is_available():
+    print(f"GPU disponible : {cuda.get_device_name(0)}")
+else:
+    print("GPU non disponible, utilisation du CPU.")
 
-    result = model.transcribe(video_path, fp16=False)
+choix = "avec"  # @param ["avec", "sans"]
+puissance = "large-v3"  # @param ["base", "medium", "turbo", "large-v3"]
 
- 
-    transcription = ""
-    last_speaker = None
 
-    for segment in result['segments']:
-        start_time = segment['start']
-        end_time = segment['end']
-        text = segment['text']
+locuteur_1 = "locuteur 1"  # Nom du premier locuteur
+locuteur_2 = "locuteur 2"    # Nom du second locuteur
 
-      
-        if last_speaker is None or start_time - last_speaker > 2:  # Ajuster si besoin
-            transcription += "\n"  
+if choix == "avec":
 
-        transcription += text.strip() + " "
-        last_speaker = end_time
+    print("Veuillez déposer votre fichier audio :")
+    uploaded = files.upload()
+    audio_path = list(uploaded.keys())[0]
+    print(f"Fichier reçu : {audio_path}")
 
-    return transcription.strip()
+    def transcribe_with_two_speakers(video_path, model_size, speaker1, speaker2):
 
-if __name__ == "__main__":
-    video_path = (audio_path)  
-    output = transcribe_with_speaker_changes(video_path)
+        model = whisper.load_model(model_size)
+        result = model.transcribe(video_path, fp16=False, word_timestamps=True)
+
+        transcription = ""
+        current_speaker = speaker1
+
+        for segment in result['segments']:
+
+            if current_speaker == speaker1:
+                current_speaker = speaker2
+            else:
+                current_speaker = speaker1
+
+
+            transcription += f"[{current_speaker}] {segment['text'].strip()}\n"
+
+        return transcription.strip()
+
+
+    transcription = transcribe_with_two_speakers(audio_path, puissance, locuteur_1, locuteur_2)
+
 
     with open("transcription.txt", "w", encoding="utf-8") as file:
-        file.write(output)
+        file.write(transcription)
 
-    print("Transcription completed and saved to 'transcription.txt'.")
+    print("Transcription terminée et sauvegardée dans 'transcription.txt'.")
+
+elif choix == "sans":
+    print("Veuillez déposer votre fichier audio :")
+    uploaded = files.upload()
+    audio_path = list(uploaded.keys())[0]
+    print(f"Fichier reçu : {audio_path}")
+
+    !whisper --model {puissance} --output_format txt "{audio_path}"
+
+    print("Option invalide. Veuillez choisir 'avec' ou 'sans'.")
 
 =======================================================================================
 
