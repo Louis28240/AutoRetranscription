@@ -39,6 +39,12 @@ Pour utiliser le script, il faut cliquer sur le lien google colab.
    - `Qualité maximale` : La meilleure qualité possible (mais plus lent)
 
 2. Cliquez sur `Choisir un fichier audio` et sélectionnez votre fichier
+
+
+https://github.com/user-attachments/assets/7ace09cf-c49b-46bf-a10f-4899db49eea0
+
+
+   
 3. La transcription commencera automatiquement :
    - Vous verrez le texte apparaître progressivement
    - À la fin, le fichier texte sera automatiquement téléchargé
