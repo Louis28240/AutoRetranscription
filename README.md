@@ -69,11 +69,11 @@ Pour retranscrire d'autres fichiers plus tard :
 1. Allez dans votre Google Drive
 2. Retrouvez votre copie du script
 3. Ouvrez-la et recommencez à l'étape 2
+ATTENTION : Google limite l'utilisation à 4h / jour. Après 4h, cela va continuer mais en prenant les perfomances de votre ordiateur (ce qui va prendre beaucoup plus de temps).
 
 ## 🔒 Confidentialité
 - En utilisant votre propre copie, vos données restent privées
-- Les fichiers audio ne sont utilisés que pour la transcription
-- Tout est traité localement dans votre session Google Colab
+
 
 THOMAS Louis 
 M2 Sociologie recherche
@@ -81,4 +81,4 @@ Université de Tours
 
 Avec l'aide de THOMAS Guylain (pas mon frère même si même nom de famille).
 Master ingénieur logiciel
-Epitech Nantes 
+Epitech Nantes
